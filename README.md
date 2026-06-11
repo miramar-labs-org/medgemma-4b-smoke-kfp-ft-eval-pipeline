@@ -1,6 +1,6 @@
 # medgemma-4b-smoke-kfp-ft-eval-pipeline
 
-[![Open in JupyterLab](https://img.shields.io/badge/Open%20in-JupyterLab-F37626?logo=jupyter&logoColor=white)](http://localhost:8888/lab/tree/git-miramar-labs-org/projects/medgemma-4b-smoke-kfp-ft-eval-pipeline/notebook.ipynb)  [![last run](https://img.shields.io/badge/last%20run-pending-lightgrey)](runs/RUNS.md)
+[![Open in JupyterLab](https://img.shields.io/badge/Open%20in-JupyterLab-F37626?logo=jupyter&logoColor=white)](http://localhost:8888/lab/tree/git-miramar-labs-org/projects/medgemma-4b-smoke-kfp-ft-eval-pipeline/notebook.ipynb)  [![last run](https://img.shields.io/badge/last%20run-run--004%20PASS-brightgreen)](runs/RUNS.md)
 
 | | |
 |---|---|
