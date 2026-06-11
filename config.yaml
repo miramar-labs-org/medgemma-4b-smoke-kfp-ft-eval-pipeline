@@ -1,7 +1,7 @@
 description: "MedGemma 4B smoke test — validates fine-tune+eval pipeline code paths on medical QA before running 27B overnight"
 
 model:
-  id: google/medgemma-4b-it      # HuggingFace model ID
+  id: unsloth/medgemma-4b-it     # HuggingFace model ID (ungated mirror of google/medgemma-4b-it)
 
 datasets:
   - name: medqa
