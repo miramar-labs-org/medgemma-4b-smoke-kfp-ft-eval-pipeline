@@ -53,6 +53,44 @@ def main():
     pipeline_name = os.path.basename(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     )
+    # Pre-create adapter chunk dirs on host before deploying.
+    # 9p dfltuid=1000 assigns uid 1000 to newly-created dirs; container uid 65532 can only
+    # write into them if pre-created with mode 777 by the host process (uid 1000 = dfltuid).
+    import pathlib as _pl
+    _hf_base = os.path.expanduser("~/shared/huggingface-kfp")
+    _chunking_cfg = _cfg.get("chunking", {})
+    if _chunking_cfg.get("enabled"):
+        for _i in range(_chunking_cfg.get("total_chunks", 1)):
+            _chunk_dir = _pl.Path(_hf_base) / "adapters" / pipeline_name / f"chunk-{_i}"
+            _chunk_dir.mkdir(parents=True, exist_ok=True)
+            _chunk_dir.chmod(0o777)
+            print(f"Pre-created adapter dir: {_chunk_dir}")
+
+    # ── Download model to HF cache + fix 9p symlinks ─────────────────────────
+    # huggingface-cli download is idempotent — skips files already present.
+    # Hard-link fix replaces snapshot symlinks with hard links so minikube's
+    # 9p server serves file content instead of the symlink path string.
+    import subprocess as _sp
+    _model_id = (_cfg.get("model") or {}).get("id", "")
+    if _model_id and _model_id != "org/model":
+        _hf_hub = _pl.Path(_hf_base)
+        print(f"Downloading model: {_model_id}")
+        _sp.run(
+            ["huggingface-cli", "download", _model_id, "--cache-dir", str(_hf_hub)],
+            check=True,
+        )
+        _model_key = _model_id.replace("/", "--")
+        _refs = _hf_hub / f"models--{_model_key}" / "refs" / "main"
+        if _refs.exists():
+            _commit = _refs.read_text().strip()
+            _snap = _hf_hub / f"models--{_model_key}" / "snapshots" / _commit
+            for _f in _snap.iterdir():
+                if _f.is_symlink():
+                    _target = _f.resolve()
+                    _f.unlink()
+                    os.link(str(_target), str(_f))
+            print(f"Hard-linked snapshot: {_snap}")
+
     compiler.Compiler().compile(pipeline_func=pipeline_fn, package_path=pipeline_yaml)
     print(f"Compiled: {pipeline_yaml}")
 

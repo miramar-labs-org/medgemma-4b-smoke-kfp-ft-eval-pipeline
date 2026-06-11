@@ -7,20 +7,53 @@ import re as _re
 
 
 def extract_answer(text):
-    # TODO: implement for your dataset's answer format.
-    # For multiple-choice: return the letter (a/b/c/d).
-    # For yes/no: return 'yes' or 'no'.
-    return text.strip().lower().split()[0] if text.strip() else ""
+    text = text.strip()
+    # "Final Answer: X" prefix
+    m = _re.search(r'final answer[:\s]+([A-Ea-e])', text, _re.IGNORECASE)
+    if m:
+        return m.group(1).upper()
+    # standalone letter A–E (MCQ)
+    m = _re.match(r'^([A-Ea-e])[.\s]', text)
+    if m:
+        return m.group(1).upper()
+    m = _re.search(r'\b([A-Ea-e])\b', text)
+    if m:
+        return m.group(1).upper()
+    # yes / no / maybe (PubMedQA)
+    lower = text.lower()
+    for token in ("yes", "no", "maybe"):
+        if lower.startswith(token):
+            return token
+    for token in ("yes", "no", "maybe"):
+        if token in lower:
+            return token
+    return text.split()[0].lower() if text else ""
 
 
 def make_infer_fn(tokenizer, model, system_message, max_new_tokens, do_sample):
-    # TODO: implement for your model's chat template and generation config.
+    import torch as _torch
+
     def _infer(row):
-        return ""  # TODO: apply chat template, generate, decode
+        user_content = _make_user_content(row)
+        messages = [
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": user_content},
+        ]
+        inputs = tokenizer.apply_chat_template(
+            messages, return_tensors="pt", add_generation_prompt=True
+        ).to(model.device)
+        with _torch.no_grad():
+            output_ids = model.generate(
+                inputs, max_new_tokens=max_new_tokens, do_sample=do_sample
+            )
+        return tokenizer.decode(output_ids[0][inputs.shape[1]:], skip_special_tokens=True)
+
     return _infer
 
 
 def _make_user_content(row):
-    # TODO: format the user-turn content for inference.
-    # row has keys: instruction, response, source
-    return row["instruction"]
+    source = row.get("source", "")
+    instruction = row.get("instruction", "")
+    if source == "pubmedqa":
+        return instruction  # already includes "Answer yes, no, or maybe."
+    return instruction  # MCQ instructions already contain "Answer with the letter only."
